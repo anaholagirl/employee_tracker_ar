@@ -96,7 +96,7 @@ def assign_employee_to_division
   if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
     the_employee = employee_array[employee_number-1]
     division_array = list_divisions
-    puts "\nEnter the division number to add the employee"
+    puts "\nEnter the division number to add the employee to"
     division_number = gets.chomp.to_i
     if !division_array.empty? && (division_number != 0 && division_number <= division_array.length)
       the_division = division_array[division_number-1]
@@ -117,12 +117,16 @@ def find_projects_for_employee
   if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
     the_employee = employee_array[employee_number-1]
     puts "\nThe projects for Employee #{the_employee.name}\n"
-    the_project_array = Project.where(:employee_id => the_employee.id)
-    the_project_array.each_with_index do |project, index|
-      puts "#{index+1}. #{project.name}, Done = #{project.done}"
+    the_project_array = Project.employees.where(:id => the_employee.id)
+    if !the_project_array.empty?
+      the_project_array.each_with_index do |project, index|
+        puts "#{index+1}. #{project.name}, Done = #{project.done}"
+      end
+    else
+      puts "    No projects found"
     end
   else
-    "Invalid employee number, try again"
+    puts "\nInvalid employee number, try again"
   end
   puts "\n"
 end
@@ -190,7 +194,7 @@ end
 def add_project
   puts "\nEnter new project name"
   project_name = gets.chomp
-  new_project = Project.create({:name => project_name, :employee_id => 0, :done=>false})
+  new_project = Project.create({:name => project_name, :done=>false})
   puts "\n#{new_project.name} has been added"
 end
 
@@ -201,10 +205,13 @@ def list_projects
     puts "\nThere are no projects in the database"
   else
     project_array.each_with_index do |project, index|
-      if project.employee_id != 0
-        puts "#{index+1}. #{project.name}, Employee = #{project.employee.name}"
+      puts "#{index+1}. #{project.name}"
+      if !project.employees.empty?
+        project.employees.each_with_index do |employee, index|
+          puts "    [#{index+1}] #{employee.name}"
+        end
       else
-        puts "#{index+1}. #{project.name}, Employee = Not yet assigned"
+        puts "    Employee not yet assigned"
       end
     end
   end
@@ -223,7 +230,7 @@ def assign_project_to_employee
     employee_number = gets.chomp.to_i
     if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
       the_employee = employee_array[employee_number-1]
-      the_project.update(:employee_id=>the_employee.id)
+      the_employee.projects << the_project
       puts "\nProject #{the_project.name} added to employee #{the_employee.name}"
     else
       puts "\nInvalid employee number, try again"

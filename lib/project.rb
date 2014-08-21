@@ -1,3 +1,3 @@
 class Project < ActiveRecord::Base
-  belongs_to :employee
+  has_many :employees, through :employee_projects
 end
