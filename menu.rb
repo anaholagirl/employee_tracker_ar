@@ -2,7 +2,8 @@ require 'active_record'
 
 require './lib/employee.rb'
 require './lib/division.rb'
-require 'pry'
+require './lib/project.rb'
+require "pry"
 
 database_configurations = YAML::load(File.open('./db/config.yml'))
 development_configuration = database_configurations['development']
@@ -43,7 +44,8 @@ def employee_menu
   puts "\nWelcome to the Employee Menu!"
   puts "Press 'a' to add a new employee"
   puts "Press 'l' to list all the employees"
-  puts "press 'd' to assign an employee to a division"
+  puts "Press 'd' to assign an employee to a division"
+  puts "Press 'e' to list all of the projects for an employee"
   puts "Press 'm' to return to the main menu"
   puts "Press 'x' to exit the program"
   menu_choice = gets.chomp
@@ -53,6 +55,8 @@ def employee_menu
     list_employees
   elsif menu_choice == 'd'
     assign_employee_to_division
+  elsif menu_choice == 'e'
+    find_projects_for_employee
   elsif menu_choice == 'x'
     exit_program
   elsif menu_choice != 'm'
@@ -74,7 +78,11 @@ def list_employees
     puts "\nThere are no employees in the database"
   else
     employee_array.each_with_index do |employee, index|
-      puts "#{index+1}. #{employee.name}, Division = #{employee.division_id}"
+      if employee.division_id != 0
+        puts "#{index+1}. #{employee.name}, Division = #{employee.division.name}"
+      else
+        puts "#{index+1}. #{employee.name}, Division = Not yet assigned"
+      end
     end
   end
   puts "\n"
@@ -100,6 +108,23 @@ def assign_employee_to_division
   else
     puts "\nInvalid employee number, try again"
   end
+end
+
+def find_projects_for_employee
+  employee_array = list_employees
+  puts "\nEnter the number of the employee"
+  employee_number = gets.chomp.to_i
+  if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
+    the_employee = employee_array[employee_number-1]
+    puts "\nThe projects for Employee #{the_employee.name}\n"
+    the_project_array = Project.where(:employee_id => the_employee.id)
+    the_project_array.each_with_index do |project, index|
+      puts "#{index+1}. #{project.name}, Done = #{project.done}"
+    end
+  else
+    "Invalid employee number, try again"
+  end
+  puts "\n"
 end
 
 def division_menu
@@ -139,7 +164,84 @@ def list_divisions
 end
 
 def project_menu
+  puts "\nWelcome to the Project Menu!"
+  puts "Press 'a' to add a new project"
+  puts "Press 'l' to list all the projects"
+  puts "Press 'd' to mark a project as done"
+  puts "press 'e' to assign an project to a employee"
+  puts "Press 'm' to return to the main menu"
+  puts "Press 'x' to exit the program"
+  menu_choice = gets.chomp
+  if menu_choice == 'a'
+    add_project
+  elsif menu_choice == 'l'
+    list_projects
+  elsif menu_choice == 'd'
+    mark_project_as_done
+  elsif menu_choice == 'e'
+    assign_project_to_employee
+  elsif menu_choice == 'x'
+    exit_program
+  elsif menu_choice != 'm'
+    puts "\nInvalid option, try again"
+  end
+end
 
+def add_project
+  puts "\nEnter new project name"
+  project_name = gets.chomp
+  new_project = Project.create({:name => project_name, :employee_id => 0, :done=>false})
+  puts "\n#{new_project.name} has been added"
+end
+
+def list_projects
+  puts "\nThe active projects at LinCin Company\n"
+  project_array = Project.where(:done=>false).order(:name)
+  if project_array.empty?
+    puts "\nThere are no projects in the database"
+  else
+    project_array.each_with_index do |project, index|
+      if project.employee_id != 0
+        puts "#{index+1}. #{project.name}, Employee = #{project.employee.name}"
+      else
+        puts "#{index+1}. #{project.name}, Employee = Not yet assigned"
+      end
+    end
+  end
+  puts "\n"
+  project_array
+end
+
+def assign_project_to_employee
+  project_array = list_projects
+  puts "\nEnter the number of the project"
+  project_number = gets.chomp.to_i
+  if !project_array.empty? && (project_number != 0 && project_number <= project_array.length)
+    the_project = project_array[project_number-1]
+    employee_array = list_employees
+    puts "\nEnter the employee number to add the project"
+    employee_number = gets.chomp.to_i
+    if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
+      the_employee = employee_array[employee_number-1]
+      the_project.update(:employee_id=>the_employee.id)
+      puts "\nProject #{the_project.name} added to employee #{the_employee.name}"
+    else
+      puts "\nInvalid employee number, try again"
+    end
+  else
+    puts "\nInvalid project number, try again"
+  end
+end
+
+def mark_project_as_done
+  project_array = list_projects
+  puts "\nEnter the number of the project to mark as complete"
+  project_number = gets.chomp.to_i
+  if !project_array.empty? && (project_number != 0 && project_number <= project_array.length)
+    the_project = project_array[project_number-1]
+    the_project.update(:done=>true)
+    puts "\nProject #{the_project.name} marked as done!"
+  end
 end
 
 def exit_program
