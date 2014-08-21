@@ -3,7 +3,7 @@ require 'active_record'
 require './lib/employee.rb'
 require './lib/division.rb'
 require './lib/project.rb'
-require "pry"
+require './lib/employees_project.rb'
 
 database_configurations = YAML::load(File.open('./db/config.yml'))
 development_configuration = database_configurations['development']
@@ -93,7 +93,7 @@ def assign_employee_to_division
   employee_array = list_employees
   puts "\nEnter the number of the employee"
   employee_number = gets.chomp.to_i
-  if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
+  if !employee_array.empty? && employee_number != 0 && employee_number <= employee_array.length
     the_employee = employee_array[employee_number-1]
     division_array = list_divisions
     puts "\nEnter the division number to add the employee to"
@@ -114,7 +114,7 @@ def find_projects_for_employee
   employee_array = list_employees
   puts "\nEnter the number of the employee"
   employee_number = gets.chomp.to_i
-  if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
+  if !employee_array.empty? && employee_number != 0 && employee_number <= employee_array.length
     the_employee = employee_array[employee_number-1]
     puts "\nThe projects for Employee #{the_employee.name}\n"
     the_project_array = Project.employees.where(:id => the_employee.id)
@@ -135,6 +135,7 @@ def division_menu
   puts "\nWelcome to the Division Menu!\n\n"
   puts "Press 'a' to add a new division"
   puts "Press 'l' to list all the divisions"
+  puts "Press 'p' to list all of the projects for a division"
   puts "Press 'm' to return to the main menu"
   puts "Press 'x' to exit the program"
   menu_choice = gets.chomp
@@ -142,6 +143,8 @@ def division_menu
     add_division
   elsif menu_choice == 'l'
     list_divisions
+  elsif menu_choice == 'p'
+    list_projects_division
   elsif menu_choice == 'x'
     exit_program
   elsif menu_choice != 'm'
@@ -165,6 +168,29 @@ def list_divisions
   end
   puts "\n"
   division_array
+end
+
+def list_projects_division
+  division_array = list_divisions
+  puts "\nEnter the number of the division"
+  division_number = gets.chomp.to_i
+  if !division_array.empty? && division_number != 0 && division_number <= division_array.length
+    the_division = division_array[division_number-1]
+    puts "\nThe projects for division #{the_division.name}"
+    if !the_division.employees.empty?
+      if !the_division.projects.empty?
+        the_division.projects.each_with_index do |project, index|
+          puts "#{index+1}. #{project.name}"
+        end
+      else
+        puts "\nThere are no projects in the division"
+      end
+    else
+      puts "\nThere are no employees in the division"
+    end
+  else
+    puts "\nInvalid division number, try again"
+  end
 end
 
 def project_menu
@@ -201,9 +227,7 @@ end
 def list_projects
   puts "\nThe active projects at LinCin Company\n"
   project_array = Project.where(:done=>false).order(:name)
-  if project_array.empty?
-    puts "\nThere are no projects in the database"
-  else
+  if !project_array.empty?
     project_array.each_with_index do |project, index|
       puts "#{index+1}. #{project.name}"
       if !project.employees.empty?
@@ -214,6 +238,8 @@ def list_projects
         puts "    Employee not yet assigned"
       end
     end
+  else
+    puts "\nThere are no projects in the database"
   end
   puts "\n"
   project_array
@@ -226,11 +252,14 @@ def assign_project_to_employee
   if !project_array.empty? && (project_number != 0 && project_number <= project_array.length)
     the_project = project_array[project_number-1]
     employee_array = list_employees
-    puts "\nEnter the employee number to add the project"
+    puts "\nEnter the employee number to add to the project"
     employee_number = gets.chomp.to_i
     if !employee_array.empty? && (employee_number != 0 && employee_number <= employee_array.length)
       the_employee = employee_array[employee_number-1]
-      the_employee.projects << the_project
+      puts "Enter what this employee will contribute to the project"
+      contribution = gets.chomp
+      the_join_entry = EmployeesProject.create(:employee_id=>the_employee.id,
+                          :project_id=>the_project.id, :contribution=>contribution)
       puts "\nProject #{the_project.name} added to employee #{the_employee.name}"
     else
       puts "\nInvalid employee number, try again"

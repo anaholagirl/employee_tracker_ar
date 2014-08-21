@@ -4,6 +4,7 @@ require 'rspec'
 require 'employee'
 require 'division'
 require 'project'
+require 'employees_project'
 
 database_configurations = YAML::load(File.open('./db/config.yml'))
 test_configuration = database_configurations['test']
