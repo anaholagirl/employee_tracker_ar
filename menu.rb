@@ -46,6 +46,7 @@ def employee_menu
   puts "Press 'l' to list all the employees"
   puts "Press 'd' to assign an employee to a division"
   puts "Press 'p' to list all of the projects for an employee"
+  puts "Press 't' to list when an employee has worked on a project"
   puts "Press 'm' to return to the main menu"
   puts "Press 'x' to exit the program"
   menu_choice = gets.chomp
@@ -56,7 +57,9 @@ def employee_menu
   elsif menu_choice == 'd'
     assign_employee_to_division
   elsif menu_choice == 'p'
-    find_projects_for_employee
+    find_projects_for_employee(menu_choice)
+  elsif menu_choice == 't'
+    find_projects_for_employee(menu_choice)
   elsif menu_choice == 'x'
     exit_program
   elsif menu_choice != 'm'
@@ -110,29 +113,69 @@ def assign_employee_to_division
   end
 end
 
-def find_projects_for_employee
+def find_projects_for_employee(option)
+  error = false
   employee_array = list_employees
   puts "\nEnter the number of the employee"
   employee_number = gets.chomp.to_i
   if !employee_array.empty? && employee_number != 0 && employee_number <= employee_array.length
     the_employee = employee_array[employee_number-1]
-    puts "\nThe projects for Employee #{the_employee.name}\n"
     if !the_employee.projects.empty?
-      the_employee.projects.each_with_index do |project, index|
-        if project.done
-          project_status_str = "Completed"
+      if option == "p"
+        employee_projects = the_employee.projects
+        puts "\nThe projects for #{the_employee.name}\n\n"
+      elsif option == "t"
+        puts "\nEnter the first date of the date range to consider ('YYYY-MM-DD' format)"
+        first_date = gets.chomp
+        if first_date =~ /\d\d\d\d-\d\d-\d\d/
+          puts "\nEnter the last date of the date range to consider ('YYYY-MM-DD' format)"
+          last_date = gets.chomp
+          if last_date =~ /\d\d\d\d-\d\d-\d\d/
+            if last_date > first_date
+              employee_projects = the_employee.projects.where("start_date >= ? AND start_date <= ?",
+                                                             first_date, last_date)
+              if !employee_projects.empty?
+                puts "\nThe projects for #{the_employee.name} from #{first_date} to #{last_date}\n\n"
+              else
+                puts "\nThere are no projects for #{the_employee.name} from #{first_date} to #{last_date}"
+                error = true
+              end
+            else
+              puts "\nLast date must be after first date, try again"
+              error = true
+            end
+          else
+            puts "\nInvalid date format for last date, try again"
+            error = true
+          end
         else
-          project_status_str = "In progress"
+          puts "\nInvalid date format for first date, try again"
+          error = true
         end
-        employee_project = project.employees_projects.where(:employee_id=>the_employee.id)
-        puts "#{index+1}. #{project.name}, #{project_status_str}, " +
-                               "#{employee_project.first.contribution}"
+      else
+        puts "\nInternal error - invalid option sent to find_projects_for_employee"
+        error = true
       end
     else
-      puts "    No projects found"
+      puts "\nThere are no projects for #{the_employee.name}"
+      error = true
     end
   else
     puts "\nInvalid employee number, try again"
+    error = true
+  end
+  if !error
+    employee_projects.each_with_index do |project, index|
+      if project.done
+        project_status_str = "Completed"
+      else
+        project_status_str = "In progress"
+      end
+      display_date = project.start_date.strftime('%Y-%m-%d')
+      employee_project = project.employees_projects.where(:employee_id=>the_employee.id)
+      puts "#{index+1}. #{project.name}, #{project_status_str}, start date #{display_date}, " +
+                       "#{employee_project.first.contribution}"
+    end
   end
   puts "\n"
 end
@@ -226,8 +269,14 @@ end
 def add_project
   puts "\nEnter new project name"
   project_name = gets.chomp
-  new_project = Project.create({:name => project_name, :done=>false})
-  puts "\n#{new_project.name} has been added"
+  puts "Enter the start date of #{project_name} ('YYYY-MM-DD' format)"
+  start_date = gets.chomp
+  if start_date =~ /\d\d\d\d-\d\d-\d\d/
+    new_project = Project.create({:name => project_name, :done=>false, :start_date=>start_date})
+    puts "\n#{new_project.name} has been added"
+  else
+    puts "\nInvalid date format, try again"
+  end
 end
 
 def list_projects
@@ -282,8 +331,19 @@ def mark_project_as_done
   project_number = gets.chomp.to_i
   if !project_array.empty? && (project_number != 0 && project_number <= project_array.length)
     the_project = project_array[project_number-1]
-    the_project.update(:done=>true)
-    puts "\nProject #{the_project.name} marked as done!"
+    puts "\nEnter the end date of #{the_project.name} ('YYYY-MM-DD' format)"
+    end_date = gets.chomp
+    if end_date  =~ /\d\d\d\d-\d\d-\d\d/ && end_date >= the_project.start_date
+      the_project.update(:done=>true, :end_date=>end_date)
+      puts "\nProject #{the_project.name} marked as done on #{end_date}!"
+    elsif end_date < the_project.start_date
+      display_date = the_project.start_date.strftime("%Y-%m-%d")
+      puts "\nProject #{the_project.name} cannot end before it started on #{display_date}"
+    else
+      puts "\nInvalid date format, try again"
+    end
+  else
+    puts "\nInvalid project number, try again"
   end
 end
 
@@ -292,7 +352,4 @@ def exit_program
   exit
 end
 
-
-
 main_menu
-
