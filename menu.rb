@@ -45,7 +45,7 @@ def employee_menu
   puts "Press 'a' to add a new employee"
   puts "Press 'l' to list all the employees"
   puts "Press 'd' to assign an employee to a division"
-  puts "Press 'e' to list all of the projects for an employee"
+  puts "Press 'p' to list all of the projects for an employee"
   puts "Press 'm' to return to the main menu"
   puts "Press 'x' to exit the program"
   menu_choice = gets.chomp
@@ -55,7 +55,7 @@ def employee_menu
     list_employees
   elsif menu_choice == 'd'
     assign_employee_to_division
-  elsif menu_choice == 'e'
+  elsif menu_choice == 'p'
     find_projects_for_employee
   elsif menu_choice == 'x'
     exit_program
@@ -117,10 +117,16 @@ def find_projects_for_employee
   if !employee_array.empty? && employee_number != 0 && employee_number <= employee_array.length
     the_employee = employee_array[employee_number-1]
     puts "\nThe projects for Employee #{the_employee.name}\n"
-    the_project_array = Project.employees.where(:id => the_employee.id)
-    if !the_project_array.empty?
-      the_project_array.each_with_index do |project, index|
-        puts "#{index+1}. #{project.name}, Done = #{project.done}"
+    if !the_employee.projects.empty?
+      the_employee.projects.each_with_index do |project, index|
+        if project.done
+          project_status_str = "Completed"
+        else
+          project_status_str = "In progress"
+        end
+        employee_project = project.employees_projects.where(:employee_id=>the_employee.id)
+        puts "#{index+1}. #{project.name}, #{project_status_str}, " +
+                               "#{employee_project.first.contribution}"
       end
     else
       puts "    No projects found"
@@ -232,7 +238,8 @@ def list_projects
       puts "#{index+1}. #{project.name}"
       if !project.employees.empty?
         project.employees.each_with_index do |employee, index|
-          puts "    [#{index+1}] #{employee.name}"
+          employee_project = employee.employees_projects.where(:project_id=>project.id)
+          puts "    [#{index+1}] #{employee.name}, #{employee_project.first.contribution}"
         end
       else
         puts "    Employee not yet assigned"
